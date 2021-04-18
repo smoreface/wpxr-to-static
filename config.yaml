@@ -37,7 +37,7 @@
 #     - uncategorized
 
 # Replace certain patterns in content
-# The comment really is the default
+# Currentl has no default, the comment is an example
 # content_replace: { "<sub>(.*?)</sub>": '{{% sub %}}\1{{% /sub %}}' }
 
 # Options for converting HTML content to Markdown using markdownify

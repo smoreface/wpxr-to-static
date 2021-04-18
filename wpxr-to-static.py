@@ -70,10 +70,6 @@ item_type_filter:
 - wp_block
 - wpcf7_contact_form
 
-# Replace certain patterns in content
-# The comment really is the default
-content_replace: { "<sub>(.*?)</sub>": '{{% sub %}}\\1{{% /sub %}}' }
-
 # Options for converting HTML content to Markdown using markdownify
 # markdownify:
 heading_style: ATX
@@ -849,7 +845,7 @@ class HugoConverter:
             config.get_config_item("use_author_display_name_in_metadata") or False
         )
 
-        self.content_replace = config.get_config_item("content_replace")
+        self.content_replace = config.get_config_item("content_replace") or {}
 
         # Data Models
         self.hugo_wp_items = config.get_data_model_item("hugo_wp_items")
