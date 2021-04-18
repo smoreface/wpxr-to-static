@@ -1298,7 +1298,7 @@ class HugoWriter:
                 logging.debug("      full_path: " + str(item_full_path))
                 item_file = codecs.open(item_full_path, "w", encoding="utf-8")
                 yaml.dump(data=item, stream=item_file, explicit_start=True)
-              item_file.write("---\n")
+                item_file.write("---\n")
                 if item.get("wp_id") is not None:
                     content = content_map.get(item["wp_id"])
                     if content is not None:
@@ -1307,7 +1307,7 @@ class HugoWriter:
                         )
                         item_file.write(parsed_content)
                     item_file.write("\n")
-             item_file.close()
+            item_file.close()
 
 
 # When this code is used a command line program, it's configuration is entirely
