@@ -1,0 +1,58 @@
+# Sample config file
+# Commented entries are the defaults
+# Uncomment and change to override
+
+# Logging level (just stderr output at the moment)
+# Logs only this level of message and above through the log facility
+# loglevel: CRITICAL
+# The directory where wpxr-to-static looks for wordpress export xml (WPXR) files.
+# wpxr_dir: wpxr
+
+# The target directory where all output is saved.
+# build_dir: build/hugo
+
+# Output extension
+# target_extension: md
+
+# Subdir of target dir for the content
+# content_dir: content
+
+# Item types we don't want to keep
+# item_type_filter:
+#  - nav_menu_item
+#  - flamingo_contact
+#  - flamingo_inbound
+#  - wp_block
+#  - wpcf7_contact_form
+
+# filter by any field:value in the result tree.
+# Note as an exception to the commented entries are defaults, for this
+# entry the defaults is to have no filter
+# item_field_filter:
+#  wp_status: draft
+
+# Ditto only with a list of possible values to filter out
+# item_field_list_filter:
+#   categories:
+#     - uncategorized
+
+# Replace certain patterns in content
+# The comment really is the default
+# content_replace: { "<sub>(.*?)</sub>": '{{% sub %}}\1{{% /sub %}}' }
+
+# Options for converting HTML content to Markdown using markdownify
+# markdownify:
+#   heading_style: ATX
+#   strip: ["script"]
+
+# Instead of login name use display name in Hugo author per-page metadata
+# use_author_display_name_in_metadata: True
+
+# For items of wp:post_type page keep the page hierarchy
+# (creates a directory structure to match the exiting page hierarchy)
+# keep_page_hierarchy: True
+
+# Config file containing data models for converting the
+# WPXR file to desired static generator
+# May be yaml or toml
+# data_models: hugo_data_model.yaml
