@@ -70,10 +70,21 @@ item_type_filter:
 - wp_block
 - wpcf7_contact_form
 
+# Remove fields we don't want in final output, but do during processing
+final_remove_fields:
+  - parent
+
+# Don't emit wp_id in output files
+no_output_wp_id: true
+
 # Options for converting HTML content to Markdown using markdownify
 # markdownify:
 heading_style: ATX
 strip: ["script"]
+
+# Remove single values we don't want, for a given field (list_of_maps)
+remove_field_values:
+  - aliases: /
 
 # Instead of login name use display name in Hugo author per-page metadata
 use_author_display_name_in_metadata: True
@@ -847,6 +858,12 @@ class HugoConverter:
 
         self.content_replace = config.get_config_item("content_replace") or {}
 
+        # Removing fields, values
+        self.field_filter = set(self.config.get_config_item("remove_fields") or [])
+        self.remove_field_values = (
+            self.config.get_config_item("remove_field_values") or []
+        )
+
         # Data Models
         self.hugo_wp_items = config.get_data_model_item("hugo_wp_items")
 
@@ -1100,8 +1117,6 @@ class HugoConverter:
             )
 
     def mangle_hugo(self):
-        items_yaml = self.hugo_items
-
         content_count = 0
 
         # Pull out content into a separate tree
@@ -1117,17 +1132,35 @@ class HugoConverter:
                     content = current_content
                 self.content_map[item["wp_id"]] = content
 
-        self.hugo_items = items_yaml
-
         if self.page_map is None:
             self.page_map = self.get_page_map()
 
+        # Replace wp_status with draft: true or draft: false
         for page_id in self.page_map.keys():
             if self.page_map[page_id].get("page_index"):
                 self.hugo_items[self.page_map[page_id]["page_index"]][
                     "draft"
                 ] = self.page_map_get_draft_status(page_id)
                 self.hugo_items[self.page_map[page_id]["page_index"]].pop("wp_status")
+
+        # Remove unwanted values from fields (and field if empty)
+        for item in self.hugo_items:
+            if (self.remove_field_values is not None) and isinstance(
+                self.remove_field_values, list
+            ):
+                for fields_values in self.remove_field_values:
+                    if (fields_values is not None) and isinstance(
+                        fields_values, collections.abc.Mapping
+                    ):
+                        for field, field_value in fields_values.items():
+                            if item.get(field) is not None:
+                                if isinstance(item[field], list):
+                                    if field_value in item[field]:
+                                        item[field].remove(field_value)
+                                    if len(item[field]) == 0:
+                                        item.pop(field)
+                                elif item[field] == field_value:
+                                    item.pop(field)
 
 
 class HugoWriter:
@@ -1145,7 +1178,7 @@ class HugoWriter:
             self.config.get_config_item("markdownify_options") or {}
         )
 
-        # Filtering
+        # Filtering items (pages/posts etc)
         self.item_type_filter = set(
             self.config.get_config_item("item_type_filter") or []
         )
@@ -1153,6 +1186,14 @@ class HugoWriter:
         self.item_field_list_filter = (
             self.config.get_config_item("item_field_list_filter") or {}
         )
+
+        # Remove fields needed during processing but not wanted in output
+        self.final_remove_fields = (
+            self.config.get_config_item("final_remove_fields") or []
+        )
+
+        # Don't output wp_id in metadata
+        self.no_output_wp_id = self.config.get_config_item("no_output_wp_id") or False
 
         # Page Map
         self.page_map = page_map
@@ -1293,7 +1334,22 @@ class HugoWriter:
 
                 logging.debug("      full_path: " + str(item_full_path))
                 item_file = codecs.open(item_full_path, "w", encoding="utf-8")
+                if (self.final_remove_fields is not None) and isinstance(
+                    self.final_remove_fields, list
+                ):
+                    for field in self.final_remove_fields:
+                        if item.get(field) is not None:
+                            item.pop(field)
+
+                wp_id = item["wp_id"]
+                if self.no_output_wp_id is True:
+                    item.pop("wp_id")
+
                 yaml.dump(data=item, stream=item_file, explicit_start=True)
+
+                if self.no_output_wp_id is True:
+                    item["wp_id"] = wp_id
+
                 item_file.write("---\n")
                 if item.get("wp_id") is not None:
                     content = content_map.get(item["wp_id"])

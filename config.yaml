@@ -36,9 +36,20 @@
 #   categories:
 #     - uncategorized
 
+# Remove fields we don't want in final output, but do during processing
+# final_remove_fields:
+#   - parent
+
+# Don't emit wp_id in output files
+# no_output_wp_id: true
+
 # Replace certain patterns in content
-# Currentl has no default, the comment is an example
+# Currently has no default, the comment is an example
 # content_replace: { "<sub>(.*?)</sub>": '{{% sub %}}\1{{% /sub %}}' }
+
+# Remove single values we don't want, for a given field  (list of maps)
+# remove_field_values:
+#   - aliases: /
 
 # Options for converting HTML content to Markdown using markdownify
 # markdownify:
