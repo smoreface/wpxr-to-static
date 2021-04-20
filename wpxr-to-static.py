@@ -104,6 +104,7 @@ item_type_filter:
 # Remove fields we don't want in final output, but do during processing
 final_remove_fields:
   - parent
+  - type
 
 # Don't emit wp_id in output files
 no_output_wp_id: true
