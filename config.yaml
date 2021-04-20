@@ -5,11 +5,13 @@
 # Logging level (just stderr output at the moment)
 # Logs only this level of message and above through the log facility
 # loglevel: CRITICAL
-# The directory where wpxr-to-static looks for wordpress export xml (WPXR) files.
-# wpxr_dir: wpxr
+
+# The wordpress export xml (WPXR) filename.
+# wpxr_file: wpxr/wpxr.xml
 
 # The target directory where all output is saved.
-# build_dir: build/hugo
+# build_dir: build
+
 
 # Output extension
 # target_extension: md

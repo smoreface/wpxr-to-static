@@ -50,8 +50,8 @@ class W2SConfig:
 # Logs only this level of message and above through the log facility
 loglevel: CRITICAL
 
-# The directory where wpxr-to-static looks for wordpress export xml (WPXR) files.
-wpxr_dir: wpxr
+# The wordpress export xml (WPXR) filename.
+wpxr_file: wpxr/wpxr.xml
 
 # The target directory where all output is saved.
 build_dir: build
@@ -1404,32 +1404,30 @@ def main():
     logging.info("Initial configuration complete")
 
     # Files and Directories
-    wpxr_files = config.get_config_item("wpxr_dir")
-    wpxr_files = glob(os.path.join(wpxr_files, "*.xml"))
+    wpxr_file = config.get_config_item("wpxr_file")
 
     try:
-        for wpxr_file in wpxr_files:
-            logging.info("Parsing WordPress WPXR for " + wpxr_file)
-            wpxr_tree = WPXR(wpxr_file)
-            logging.info("Converting from xml for " + wpxr_file)
-            hugo_converter = HugoConverter(config, wpxr_tree)
-            hugo_converter.convert_hugo_config()
-            hugo_converter.convert_hugo_items()
-            hugo_converter.mangle_hugo()
-            logging.info("Writing data for " + wpxr_file)
-            hugo_writer = HugoWriter(
-                config, hugo_converter.get_site_url(), hugo_converter.get_page_map()
-            )
-            hugo_writer.write_hugo_config_toml(hugo_converter.get_hugo_config())
-            hugo_writer.write_hugo_items(
-                hugo_converter.get_hugo_items(), hugo_converter.get_content_map()
-            )
-            logging.info("Writing complete for converted " + wpxr_file)
+        logging.info("Parsing WordPress WPXR for " + wpxr_file)
+        wpxr_tree = WPXR(wpxr_file)
+        logging.info("Converting from xml for " + wpxr_file)
+        hugo_converter = HugoConverter(config, wpxr_tree)
+        hugo_converter.convert_hugo_config()
+        hugo_converter.convert_hugo_items()
+        hugo_converter.mangle_hugo()
+        logging.info("Writing data for " + wpxr_file)
+        hugo_writer = HugoWriter(
+            config, hugo_converter.get_site_url(), hugo_converter.get_page_map()
+        )
+        hugo_writer.write_hugo_config_toml(hugo_converter.get_hugo_config())
+        hugo_writer.write_hugo_items(
+            hugo_converter.get_hugo_items(), hugo_converter.get_content_map()
+        )
+        logging.info("Writing complete for converted " + wpxr_file)
 
     except KeyboardInterrupt:
         sys.exit(1)
 
-    logging.info("All supplied files converted.")
+    logging.info("Supplied file converted.")
 
 
 if __name__ == "__main__":
