@@ -19,13 +19,15 @@
 
 # Item types we don't want to keep
 # item_type_filter:
-#  - nav_menu_item
+#  - attachment
+#  - custom_css
 #  - flamingo_contact
 #  - flamingo_inbound
+#  - nav_menu_item
 #  - wp_block
 #  - wpcf7_contact_form
 
-# filter by any field:value in the result tree.
+# Prevent page output for any field:value in the result tree.
 # Note as an exception to the commented entries are defaults, for this
 # entry the defaults is to have no filter
 # item_field_filter:

@@ -64,11 +64,13 @@ target_extension: md
 
 # Item types we don't want to keep
 item_type_filter:
-- nav_menu_item
-- flamingo_contact
-- flamingo_inbound
-- wp_block
-- wpcf7_contact_form
+  - attachment
+  - custom_css
+  - flamingo_contact
+  - flamingo_inbound
+  - nav_menu_item
+  - wp_block
+  - wpcf7_contact_form
 
 # Remove fields we don't want in final output, but do during processing
 final_remove_fields:
@@ -1179,9 +1181,8 @@ class HugoWriter:
         )
 
         # Filtering items (pages/posts etc)
-        self.item_type_filter = set(
-            self.config.get_config_item("item_type_filter") or []
-        )
+        self.item_type_filter = self.config.get_config_item("item_type_filter") or []
+
         self.item_field_filter = self.config.get_config_item("item_field_filter") or {}
         self.item_field_list_filter = (
             self.config.get_config_item("item_field_list_filter") or {}
@@ -1359,7 +1360,7 @@ class HugoWriter:
                         )
                         item_file.write(parsed_content)
                     item_file.write("\n")
-            item_file.close()
+                item_file.close()
 
 
 # When this code is used a command line program, it's configuration is entirely
