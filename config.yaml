@@ -15,6 +15,9 @@
 # Subdir of target dir for the content
 # content_dir: content
 
+# Download image files from content bodies
+# download_content_images: false
+
 # Relative path to your WordPress images
 # e.g. /wp-content/uploads would create a match for
 # an image in you WPXR with a URL such as
@@ -24,7 +27,8 @@
 
 # Where to find your WordPress images on your local filesystem
 # Assumes you have copied them to your local system, for example
-# using rclone, scp, or other network copy tool.
+# using rclone, scp, or other network copy tool, or that you have
+# download_content_images set to true (which will download to this location)
 # If empty wpxr-to-static will not try to move the image
 # files into the site's build (output) folder
 # image_origin_local_path:

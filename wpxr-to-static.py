@@ -18,6 +18,7 @@ from urllib.parse import urlparse, urljoin
 import yaml
 import toml
 from markdownify import markdownify
+from urllib3 import PoolManager
 
 """
 wpxr-to-static - Wordpress XML exports to static website generator files
@@ -61,6 +62,9 @@ build_dir: build
 # Subdir of target dir for the content
 content_dir: content
 
+# Download image files from content bodies
+download_content_images: false
+
 # Relative path to your WordPress images
 # e.g. /wp-content/uploads would create a match for
 # an image in you WPXR with a URL such as
@@ -70,7 +74,8 @@ image_origin_rel_url: /wp-content/uploads
 
 # Where to find your WordPress images on your local filesystem
 # Assumes you have copied the to your local system, for example
-# using rclone, scp, or other network copy tool.
+# using rclone, scp, or other network copy tool, or that you have
+# download_content_images set to true (which will download to this location)
 # If empty wpxr-to-static will not try to move the image
 # files into the site's build (output) folder
 image_origin_local_path:
@@ -871,6 +876,7 @@ class HugoConverter:
         self.replacements = 0
         self.page_map = None
         self.image_paths = []
+        self.original_image_urls = []
 
         self.modifier_map = {
             "author": self.sub_author_display_name_for_login_name,
@@ -942,6 +948,14 @@ class HugoConverter:
                 self.convert_hugo_items()
         return self.content_map
 
+    def get_original_image_urls(self):
+        if len(self.original_image_urls) < 1:
+            if self.hugo_config is None:
+                self.convert_hugo_config()
+            if self.hugo_items is None:
+                self.convert_hugo_items()
+        return self.original_image_urls
+
     def get_image_paths(self):
         if len(self.image_paths) < 1:
             if self.hugo_config is None:
@@ -998,12 +1012,14 @@ class HugoConverter:
                 elif element.tag == "img" and (gotFigure is True):
                     src = element.get("src")
                     if src is not None:
+                        orig_src = src
                         # Strip the absolute origin and unwanted original path
                         new_src = src[
                             (len(urljoin(self.site_url, self.image_origin)) + 1) :
                         ]
                         # We did find a local URL
                         if src != new_src:
+                            self.original_image_urls.append(orig_src)
                             self.image_paths.append(new_src)
                             new_src = urljoin(self.image_rel_url + "/", new_src)
                             elements_src_update.append(
@@ -1269,6 +1285,8 @@ class HugoWriter:
         content_map,
         site_url,
         page_map,
+        image_paths,
+        original_image_urls,
     ):
         self.config = config
         self.site_url = site_url
@@ -1276,6 +1294,7 @@ class HugoWriter:
         self.hugo_items = hugo_items
         self.content_map = content_map
         self.image_paths = image_paths
+        self.original_image_urls = original_image_urls
 
         # Files and Directories
         self.build_dir = self.config.get_config_item("build_dir") or "build"
@@ -1302,6 +1321,16 @@ class HugoWriter:
 
         # Don't output wp_id in metadata
         self.no_output_wp_id = self.config.get_config_item("no_output_wp_id") or False
+
+        # Image handling
+
+        self.download_content_images = (
+            self.config.get_config_item("download_content_images") or False
+        )
+
+        self.image_origin_rel_url = (
+            self.config.get_config_item("image_origin_rel_url") or ""
+        )
 
         self.image_local_path = (
             self.config.get_config_item("image_origin_local_path") or None
@@ -1481,6 +1510,69 @@ class HugoWriter:
                     item_file.write("\n")
                 item_file.close()
 
+    def download_images(self):
+        if (
+            (self.download_content_images is True)
+            and (self.original_image_urls is not None)
+            and isinstance(self.original_image_urls, list)
+            and (self.image_origin_rel_url is not None)
+            and (self.image_local_path is not None)
+        ):
+            http_pool = PoolManager()
+            if not os.path.exists(self.image_local_path):
+                os.makedirs(self.image_local_path)
+            for image_url in self.original_image_urls:
+                logging.info("Attempting to download " + str(image_url))
+                parsed_url = urlparse(image_url)
+                dest_rel_path = ""
+                parsed_site_url = urlparse(self.site_url)
+                # Only handle URLs from our site (local)
+                if parsed_url.netloc != parsed_site_url.netloc:
+                    logging.debug(
+                        parsed_site_url.netloc + " != " + parsed_site_url.netloc
+                    )
+                    continue
+                # Only handle URLs from our base URL
+                if not (parsed_url.path.startswith(parsed_site_url.path)):
+                    logging.debug(
+                        parsed_url.path + " does not start with " + parsed_site_url.path
+                    )
+
+                    continue
+                dest_rel_path = parsed_url.path
+                if parsed_site_url.path != "/" and parsed_site_url.path != "":
+                    dest_rel_path = parsed_site_url.path[
+                        len(parsed_site_url.path) + 1 :
+                    ]
+                if dest_rel_path.startswith(self.image_origin_rel_url):
+                    dest_rel_path = dest_rel_path[len(self.image_origin_rel_url) + 1 :]
+                logging.debug(
+                    "Got final dest_rel_path of " + str(os.path.dirname(dest_rel_path))
+                )
+                dest_full_dir = os.path.normpath(
+                    self.image_local_path + "/" + os.path.dirname(dest_rel_path)
+                )
+                if not os.path.exists(dest_full_dir):
+                    os.makedirs(dest_full_dir)
+
+                dest_filename = os.path.normpath(
+                    dest_full_dir + "/" + os.path.basename(dest_rel_path)
+                )
+
+                logging.info(
+                    "Downloading " + str(image_url) + " -> " + str(dest_filename)
+                )
+
+                out_file = io.open(
+                    dest_filename,
+                    "wb",
+                )
+                request = http_pool.request("GET", image_url, preload_content=False)
+                for chunk in request.stream(1024):
+                    out_file.write(chunk)
+                request.release_conn()
+                out_file.close()
+
     def copy_images(self):
         if (
             (self.image_paths is not None)
@@ -1498,9 +1590,9 @@ class HugoWriter:
                     dest_dir = os.path.dirname(dest_path)
                     if not os.path.exists(dest_dir):
                         os.makedirs(dest_dir)
-                    copyfile(
-                        os.path.normpath(self.image_local_path + "/" + image), dest_path
-                    )
+                    src_path = os.path.normpath(self.image_local_path + "/" + image)
+                    logging.info("Copying " + str(src_path) + " -> " + str(dest_path))
+                    copyfile(src_path, dest_path)
 
 
 # When this code is used as a command line program, it's configuration is entirely
@@ -1564,14 +1656,12 @@ def main():
             hugo_converter.get_site_url(),
             hugo_converter.get_page_map(),
             hugo_converter.get_image_paths(),
+            hugo_converter.get_original_image_urls(),
         )
         hugo_writer.write_hugo_config_toml()
         hugo_writer.write_hugo_items()
-        hugo_writer.write_hugo_config_toml(hugo_converter.get_hugo_config())
-        hugo_writer.write_hugo_items(
-            hugo_converter.get_hugo_items(), hugo_converter.get_content_map()
-        )
-        hugo_writer.copy_images()
+        hugo_writer.download_images()  # May be a noop
+        hugo_writer.copy_images()  # May also be a noop
         logging.info("Writing complete for converted " + wpxr_file)
 
     except KeyboardInterrupt:
