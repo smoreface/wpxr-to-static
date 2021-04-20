@@ -1403,6 +1403,7 @@ def main():
     elif len(sys.argv) == 2:
         config_file_name = sys.argv[1]
 
+    config_files = None
     if config_file_name is None:
         config_files = glob("config.*")
     if (config_files is not None) and isinstance(config_files, list):
