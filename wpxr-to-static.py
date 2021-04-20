@@ -1261,9 +1261,20 @@ class HugoConverter:
 
 
 class HugoWriter:
-    def __init__(self, config, site_url, page_map, image_paths):
+    def __init__(
+        self,
+        config,
+        hugo_config,
+        hugo_items,
+        content_map,
+        site_url,
+        page_map,
+    ):
         self.config = config
         self.site_url = site_url
+        self.hugo_config = hugo_config
+        self.hugo_items = hugo_items
+        self.content_map = content_map
         self.image_paths = image_paths
 
         # Files and Directories
@@ -1334,7 +1345,7 @@ class HugoWriter:
             os.makedirs(full_dir)
         return full_dir
 
-    def write_hugo_config_toml(self, hugo_config):
+    def write_hugo_config_toml(self):
         logging.info("EMIT: config: config.toml")
 
         # Create the base output directory for the site
@@ -1347,7 +1358,7 @@ class HugoWriter:
             "w",
             encoding="utf-8",
         )
-        toml.dump(hugo_config, config_toml_file)
+        toml.dump(self.hugo_config, config_toml_file)
         config_toml_file.close()
 
     # Filter out files we don't want to emit
@@ -1370,14 +1381,14 @@ class HugoWriter:
         return skip_items
 
     # Convert from ElementTree to output files (yaml + markdown by default)
-    def write_hugo_items(self, items_yaml, content_map):
+    def write_hugo_items(self):
         # Create the base output directory for the site
         self.set_content_path()
 
         logging.info("Processing found hugo_items")
         # Output the YaML metadata and content data
         # for the final output files for the pages and posts
-        for item in items_yaml:
+        for item in self.hugo_items:
             skip_items = self.filter_items(item)
 
             item_rel_path = str(item["type"])
@@ -1461,7 +1472,7 @@ class HugoWriter:
 
                 item_file.write("---\n")
                 if item.get("wp_id") is not None:
-                    content = content_map.get(item["wp_id"])
+                    content = self.content_map.get(item["wp_id"])
                     if content is not None:
                         parsed_content = markdownify(
                             content, **self.markdownify_options
@@ -1494,7 +1505,7 @@ class HugoWriter:
 
 # When this code is used as a command line program, it's configuration is entirely
 # based on yaml or toml configuration files (base config is either config.* in the working
-# directory, or from a file whose name(possibly including path) supplied on the command line)
+# directory, or from a file whose name(possibly including path) is supplied on the command line)
 def main():
     # Get base configuration
     config_file_name = None
@@ -1547,10 +1558,15 @@ def main():
         logging.info("Writing data for " + wpxr_file)
         hugo_writer = HugoWriter(
             config,
+            hugo_converter.get_hugo_config(),
+            hugo_converter.get_hugo_items(),
+            hugo_converter.get_content_map(),
             hugo_converter.get_site_url(),
             hugo_converter.get_page_map(),
             hugo_converter.get_image_paths(),
         )
+        hugo_writer.write_hugo_config_toml()
+        hugo_writer.write_hugo_items()
         hugo_writer.write_hugo_config_toml(hugo_converter.get_hugo_config())
         hugo_writer.write_hugo_items(
             hugo_converter.get_hugo_items(), hugo_converter.get_content_map()
