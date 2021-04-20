@@ -340,9 +340,15 @@ class TreeConverter:
                 )
                 return cur_map
 
+            renamed_keys = []
+
             for rename_key, rename_value in keys_to_rename.items():
                 if out_map.get(rename_value) is not None:
-                    out_map[rename_key] = out_map.pop(rename_value)
+                    renamed_keys.append(rename_value)
+                    out_map[rename_key] = out_map.get(rename_value)
+
+            for rename_key in renamed_keys:
+                del out_map[rename_key]
 
         return cur_map
 
@@ -1120,12 +1126,14 @@ class HugoConverter:
 
     def mangle_hugo(self):
         content_count = 0
+        items_found_content = []
 
         # Pull out content into a separate tree
         for item in self.hugo_items:
             if (item.get("content") is not None) and (item.get("wp_id") is not None):
                 content_count = content_count + 1
-                current_content = item.pop("content")
+                current_content = item.get("content")
+                items_found_content.append(item)
                 content = ""
                 if isinstance(current_content, list):
                     for content_item in current_content:
@@ -1133,6 +1141,9 @@ class HugoConverter:
                 else:
                     content = current_content
                 self.content_map[item["wp_id"]] = content
+
+        for item in items_found_content:
+            del item["content"]
 
         if self.page_map is None:
             self.page_map = self.get_page_map()
@@ -1154,15 +1165,22 @@ class HugoConverter:
                     if (fields_values is not None) and isinstance(
                         fields_values, collections.abc.Mapping
                     ):
+                        remove_fields = []
                         for field, field_value in fields_values.items():
                             if item.get(field) is not None:
+                                remove_values = []
                                 if isinstance(item[field], list):
                                     if field_value in item[field]:
-                                        item[field].remove(field_value)
-                                    if len(item[field]) == 0:
-                                        item.pop(field)
+                                        remove_values.append(field_value)
+                                    if len(item[field]) == len(remove_values):
+                                        remove_fields.append(field)
                                 elif item[field] == field_value:
-                                    item.pop(field)
+                                    remove_fields.append(field)
+                                if field not in remove_fields:
+                                    for remove_value in remove_values:
+                                        item[field].remove(remove_value)
+                        for remove_field in remove_fields:
+                            del item[remove_field]
 
 
 class HugoWriter:
@@ -1338,13 +1356,17 @@ class HugoWriter:
                 if (self.final_remove_fields is not None) and isinstance(
                     self.final_remove_fields, list
                 ):
+                    remove_field_keys = []
                     for field in self.final_remove_fields:
                         if item.get(field) is not None:
-                            item.pop(field)
+                            remove_field_keys.append(field)
+
+                    for remove_field in remove_field_keys:
+                        del item[remove_field]
 
                 wp_id = item["wp_id"]
                 if self.no_output_wp_id is True:
-                    item.pop("wp_id")
+                    del item["wp_id"]
 
                 yaml.dump(data=item, stream=item_file, explicit_start=True)
 
