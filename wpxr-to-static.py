@@ -9,10 +9,12 @@ import sys
 from glob import glob
 import collections
 import logging
+from shutil import copyfile
 
 # Parsing and serializing
 from xml.etree.ElementTree import ElementTree, TreeBuilder, XMLParser, ParseError
-from urllib.parse import urlparse
+from html5lib import parseFragment as html5lib_parse, serialize as html5lib_serialize
+from urllib.parse import urlparse, urljoin
 import yaml
 import toml
 from markdownify import markdownify
@@ -58,6 +60,28 @@ build_dir: build
 
 # Subdir of target dir for the content
 content_dir: content
+
+# Relative path to your WordPress images
+# e.g. /wp-content/uploads would create a match for
+# an image in you WPXR with a URL such as
+# https://www.example.com/wp-content/uploads/2021/01/an-image-file.png
+# If www.example.com were the site's base URL.
+image_origin_rel_url: /wp-content/uploads
+
+# Where to find your WordPress images on your local filesystem
+# Assumes you have copied the to your local system, for example
+# using rclone, scp, or other network copy tool.
+# If empty wpxr-to-static will not try to move the image
+# files into the site's build (output) folder
+image_origin_local_path:
+
+# Where in the output (build) folder for the site to put the files
+# (maintains the same file structure as the source except that the
+# site baseURL and WP relative path are removed.
+image_destination_path: static/images
+
+# relative path to WorldPress images when live:
+image_rel_url: /images
 
 # Output extension
 target_extension: md
@@ -846,10 +870,12 @@ class HugoConverter:
         self.contents_checked = 0
         self.replacements = 0
         self.page_map = None
+        self.image_paths = []
 
         self.modifier_map = {
             "author": self.sub_author_display_name_for_login_name,
             "content-replace": self.replace_in_content,
+            "image-urls-in-xml": self.handle_image_urls_in_html_content,
             "url": self.make_url_relative,
         }
 
@@ -871,6 +897,10 @@ class HugoConverter:
         self.remove_field_values = (
             self.config.get_config_item("remove_field_values") or []
         )
+
+        # Image URL/Path configuration
+        self.image_origin = self.config.get_config_item("image_origin_rel_url") or ""
+        self.image_rel_url = self.config.get_config_item("image_rel_url") or "/images"
 
         # Data Models
         self.hugo_wp_items = config.get_data_model_item("hugo_wp_items")
@@ -912,6 +942,14 @@ class HugoConverter:
                 self.convert_hugo_items()
         return self.content_map
 
+    def get_image_paths(self):
+        if len(self.image_paths) < 1:
+            if self.hugo_config is None:
+                self.convert_hugo_config()
+            if self.hugo_items is None:
+                self.convert_hugo_items()
+        return self.image_paths
+
     def get_page_map(self):
         if self.page_map is None:
             if self.hugo_items is None:
@@ -941,6 +979,45 @@ class HugoConverter:
             if oldcontent != newcontent:
                 self.replacements = self.replacements + 1
                 oldcontent = newcontent
+
+        return newcontent
+
+    def handle_image_urls_in_html_content(
+        self, content, result_tree, item_map, context
+    ):
+        newcontent = str(content)
+        html5_content = html5lib_parse(
+            newcontent, container="div", namespaceHTMLElements=False
+        )
+        if html5_content is not None:
+            elements_src_update = []
+            gotFigure = False
+            for element in html5_content.iter():
+                if element.tag == "figure":
+                    gotFigure = True
+                elif element.tag == "img" and (gotFigure is True):
+                    src = element.get("src")
+                    if src is not None:
+                        # Strip the absolute origin and unwanted original path
+                        new_src = src[
+                            (len(urljoin(self.site_url, self.image_origin)) + 1) :
+                        ]
+                        # We did find a local URL
+                        if src != new_src:
+                            self.image_paths.append(new_src)
+                            new_src = urljoin(self.image_rel_url + "/", new_src)
+                            elements_src_update.append(
+                                {"element": element, "src": new_src}
+                            )
+                    gotFigure = False
+                elif gotFigure is True:
+                    gotFigure = False
+
+            # Only rewrite content if we made one or more changes
+            if len(elements_src_update) > 0:
+                for element_src in elements_src_update:
+                    element_src["element"].set("src", element_src["src"])
+                newcontent = html5lib_serialize(html5_content)
 
         return newcontent
 
@@ -1184,9 +1261,10 @@ class HugoConverter:
 
 
 class HugoWriter:
-    def __init__(self, config, site_url, page_map):
+    def __init__(self, config, site_url, page_map, image_paths):
         self.config = config
         self.site_url = site_url
+        self.image_paths = image_paths
 
         # Files and Directories
         self.build_dir = self.config.get_config_item("build_dir") or "build"
@@ -1213,6 +1291,14 @@ class HugoWriter:
 
         # Don't output wp_id in metadata
         self.no_output_wp_id = self.config.get_config_item("no_output_wp_id") or False
+
+        self.image_local_path = (
+            self.config.get_config_item("image_origin_local_path") or None
+        )
+
+        self.image_destination_path = (
+            self.config.get_config_item("image_destination_path") or "static/images"
+        )
 
         # Page Map
         self.page_map = page_map
@@ -1384,10 +1470,31 @@ class HugoWriter:
                     item_file.write("\n")
                 item_file.close()
 
+    def copy_images(self):
+        if (
+            (self.image_paths is not None)
+            and isinstance(self.image_paths, list)
+            and (self.image_destination_path is not None)
+            and (self.image_local_path is not None)
+        ):
+            for image in self.image_paths:
+                if os.path.exists(
+                    os.path.normpath(self.image_local_path + "/" + image)
+                ):
+                    dest_path = os.path.normpath(
+                        self.base_dir + "/" + self.image_destination_path + "/" + image
+                    )
+                    dest_dir = os.path.dirname(dest_path)
+                    if not os.path.exists(dest_dir):
+                        os.makedirs(dest_dir)
+                    copyfile(
+                        os.path.normpath(self.image_local_path + "/" + image), dest_path
+                    )
 
-# When this code is used a command line program, it's configuration is entirely
+
+# When this code is used as a command line program, it's configuration is entirely
 # based on yaml or toml configuration files (base config is either config.* in the working
-# directory, or from a file whose name(possibly including path) supplied on the command line
+# directory, or from a file whose name(possibly including path) supplied on the command line)
 def main():
     # Get base configuration
     config_file_name = None
@@ -1439,12 +1546,16 @@ def main():
         hugo_converter.mangle_hugo()
         logging.info("Writing data for " + wpxr_file)
         hugo_writer = HugoWriter(
-            config, hugo_converter.get_site_url(), hugo_converter.get_page_map()
+            config,
+            hugo_converter.get_site_url(),
+            hugo_converter.get_page_map(),
+            hugo_converter.get_image_paths(),
         )
         hugo_writer.write_hugo_config_toml(hugo_converter.get_hugo_config())
         hugo_writer.write_hugo_items(
             hugo_converter.get_hugo_items(), hugo_converter.get_content_map()
         )
+        hugo_writer.copy_images()
         logging.info("Writing complete for converted " + wpxr_file)
 
     except KeyboardInterrupt:

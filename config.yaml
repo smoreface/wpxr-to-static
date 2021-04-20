@@ -12,6 +12,31 @@
 # The target directory where all output is saved.
 # build_dir: build
 
+# Subdir of target dir for the content
+# content_dir: content
+
+# Relative path to your WordPress images
+# e.g. /wp-content/uploads would create a match for
+# an image in you WPXR with a URL such as
+# https://www.example.com/wp-content/uploads/2021/01/an-image-file.png
+# If www.example.com were the site's base URL.
+# image_origin_rel_url: /wp-content/uploads
+
+# Where to find your WordPress images on your local filesystem
+# Assumes you have copied them to your local system, for example
+# using rclone, scp, or other network copy tool.
+# If empty wpxr-to-static will not try to move the image
+# files into the site's build (output) folder
+# image_origin_local_path:
+
+# Where in the output (build) folder for the site
+# to put the files (maintains the same file structure
+# as the source except that the site baseURL and WP relative path are
+# removed.
+# image_destination_path: static/images
+
+# relative path to WorldPress images when live:
+# image_rel_url: /images
 
 # Output extension
 # target_extension: md

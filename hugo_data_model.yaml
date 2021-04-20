@@ -8,7 +8,9 @@ hugo_wp_items:
     - item: author
       author: true
     - list: content
-      content-replace: true
+      modifier-list:
+        - image-urls-in-xml
+        - content-replace
     - item: date
     - item: description
     - item: lastmod
