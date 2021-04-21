@@ -1564,15 +1564,25 @@ class HugoWriter:
                     "Downloading " + str(image_url) + " -> " + str(dest_filename)
                 )
 
-                out_file = io.open(
-                    dest_filename,
-                    "wb",
-                )
                 request = http_pool.request("GET", image_url, preload_content=False)
-                for chunk in request.stream(1024):
-                    out_file.write(chunk)
-                request.release_conn()
-                out_file.close()
+                if request.status < 300:
+                    out_file = io.open(
+                        dest_filename,
+                        "wb",
+                    )
+
+                    for chunk in request.stream(1024):
+                        out_file.write(chunk)
+                    request.release_conn()
+                    out_file.close()
+                else:
+                    request.release_conn()
+                    logging.error(
+                        "Failed to download file "
+                        + str(image_url)
+                        + "; got HTTP Status "
+                        + str(request.status)
+                    )
 
     def copy_images(self):
         if (
@@ -1594,6 +1604,12 @@ class HugoWriter:
                     src_path = os.path.normpath(self.image_local_path + "/" + image)
                     logging.info("Copying " + str(src_path) + " -> " + str(dest_path))
                     copyfile(src_path, dest_path)
+                else:
+                    logging.error(
+                        "Image "
+                        + str(os.path.normpath(self.image_local_path + "/" + image))
+                        + " does not exist."
+                    )
 
 
 # When this code is used as a command line program, it's configuration is entirely
