@@ -1028,6 +1028,10 @@ class HugoConverter:
                     src = element.get("src")
                     if src is not None:
                         orig_src = src
+                        parsed_src = urlparse(src)
+                        parsed_site_url = urlparse(self.site_url)
+                        new_src = src
+                        if parsed_src.netloc == parsed_site_url.netloc:
                         # Strip the absolute origin and unwanted original path
                         new_src = src[
                             (len(urljoin(self.site_url, self.image_origin)) + 1) :
