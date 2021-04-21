@@ -272,7 +272,9 @@ class TreeConverter:
             for mod_key, mod_name in modifier_map.items():
                 self.modifier_map[mod_key] = modifier_map[mod_key]
 
-    def pull_single_from_list(self, multi_list, result_tree, data_model, item_name, context):
+    def pull_single_from_list(
+        self, multi_list, result_tree, data_model, item_name, context
+    ):
         out_tree = multi_list
         item = None
 
@@ -467,7 +469,13 @@ class TreeConverter:
         return result
 
     def apply_modifiers_to_result(
-        self, result, dispatch_modifiers, result_tree, dispatch_contained, dispatch_value, context
+        self,
+        result,
+        dispatch_modifiers,
+        result_tree,
+        dispatch_contained,
+        dispatch_value,
+        context,
     ):
         result_list = None
         base_result = result
@@ -999,12 +1007,21 @@ class HugoConverter:
 
     def replace_value_in_fields(self, item, result_tree, item_map, item_name, context):
         newcontent = str(item)
-        if (self.fields_value_replace is not None) and isinstance(self.fields_value_replace, collections.abc.Mapping) and (self.fields_value_replace.get(item_name) is not None) and isinstance(self.fields_value_replace[item_name], collections.abc.Mapping):
+        if (
+            (self.fields_value_replace is not None)
+            and isinstance(self.fields_value_replace, collections.abc.Mapping)
+            and (self.fields_value_replace.get(item_name) is not None)
+            and isinstance(
+                self.fields_value_replace[item_name], collections.abc.Mapping
+            )
+        ):
             field_replace_items = self.fields_value_replace[item_name]
             if item_name == "content":
                 self.contents_checked = self.contents_checked + 1
             for target, replacement in field_replace_items.items():
-                newcontent = re.sub(target, replacement, newcontent, flags=re.MULTILINE|re.DOTALL)
+                newcontent = re.sub(
+                    target, replacement, newcontent, flags=re.MULTILINE | re.DOTALL
+                )
                 if (item != newcontent) and (item_name == "content"):
                     self.replacements = self.replacements + 1
                 item = newcontent
@@ -1032,10 +1049,10 @@ class HugoConverter:
                         parsed_site_url = urlparse(self.site_url)
                         new_src = src
                         if parsed_src.netloc == parsed_site_url.netloc:
-                        # Strip the absolute origin and unwanted original path
-                        new_src = src[
-                            (len(urljoin(self.site_url, self.image_origin)) + 1) :
-                        ]
+                            # Strip the absolute origin and unwanted original path
+                            new_src = src[
+                                (len(urljoin(self.site_url, self.image_origin)) + 1) :
+                            ]
                         # We did find a local URL
                         if src != new_src:
                             self.original_image_urls.append(orig_src)
@@ -1057,7 +1074,9 @@ class HugoConverter:
         return newcontent
 
     # For absolute hrefs in content on this site, make URLs relative to site_url (baseURL)
-    def make_href_relative_in_content(self, content, result_tree, item_map, item_name, context):
+    def make_href_relative_in_content(
+        self, content, result_tree, item_map, item_name, context
+    ):
         newcontent = str(content)
         html5_content = html5lib_parse(
             newcontent, container="div", namespaceHTMLElements=False
