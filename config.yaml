@@ -83,9 +83,11 @@
 # Don't emit wp_id in output files
 # no_output_wp_id: true
 
-# Replace certain patterns in content
+# Replace certain patterns in a field's value
 # Currently has no default, the comment is an example
-# content_replace: { "<sub>(.*?)</sub>": '{{% sub %}}\1{{% /sub %}}' }
+# fields_value_replace:
+#   content:
+#     "<sub>(.*?)</sub>": '{{< sub >}}\1{{< /sub >}}'
 
 # Remove single values we don't want, for a given field  (list of maps)
 # remove_field_values:

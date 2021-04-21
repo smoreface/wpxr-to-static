@@ -272,7 +272,7 @@ class TreeConverter:
             for mod_key, mod_name in modifier_map.items():
                 self.modifier_map[mod_key] = modifier_map[mod_key]
 
-    def pull_single_from_list(self, multi_list, result_tree, data_model, context):
+    def pull_single_from_list(self, multi_list, result_tree, data_model, item_name, context):
         out_tree = multi_list
         item = None
 
@@ -308,7 +308,7 @@ class TreeConverter:
 
         return out_tree
 
-    def map_to_key_value(self, cur_map, result_tree, data_model, context):
+    def map_to_key_value(self, cur_map, result_tree, data_model, item_name, context):
         out_map = cur_map
         new_map = {}
         key = data_model.get("key")
@@ -323,7 +323,7 @@ class TreeConverter:
 
         return out_map
 
-    def list_up_map(self, cur_map, result_tree, data_model, context):
+    def list_up_map(self, cur_map, result_tree, data_model, item_name, context):
         out_map = result_tree
         if isinstance(out_map, collections.abc.Mapping):
             if isinstance(cur_map, collections.abc.Mapping):
@@ -336,7 +336,7 @@ class TreeConverter:
                         out_map[item_key].append(item_value)
         return cur_map
 
-    def remove_list(self, cur_map, result_tree, data_model, context):
+    def remove_list(self, cur_map, result_tree, data_model, item_name, context):
         out_map = result_tree
         keys_to_delist = data_model.get("remove_list_keys")
         if (keys_to_delist is not None) and isinstance(keys_to_delist, list):
@@ -356,10 +356,10 @@ class TreeConverter:
                     out_map[delist_key] = out_map[delist_key][0]
         return cur_map
 
-    def remove_self_key(self, cur_map, result_tree, data_model, context):
+    def remove_self_key(self, cur_map, result_tree, data_model, item_name, context):
         return None
 
-    def rename_keys(self, cur_map, result_tree, data_model, context):
+    def rename_keys(self, cur_map, result_tree, data_model, item_name, context):
         out_map = result_tree
         keys_to_rename = data_model.get("rename_keys")
         if (keys_to_rename is not None) and isinstance(
@@ -384,14 +384,14 @@ class TreeConverter:
 
         return cur_map
 
-    def remove_zero(self, cur_item, result_tree, data_model, context):
+    def remove_zero(self, cur_item, result_tree, data_model, item_name, context):
         if (cur_item is None) or cur_item == 0:
             return None
         else:
             return cur_item
 
     def apply_one_modifier_to_item(
-        self, item, result_tree, modifier, mod_apply, data_model, context
+        self, item, result_tree, modifier, mod_apply, data_model, item_name, context
     ):
 
         result = item
@@ -408,13 +408,14 @@ class TreeConverter:
                             result,
                             result_tree,
                             data_model,
+                            item_name,
                             str(context) + " once",
                         )
 
         return result
 
     def apply_modifier_map_to_item(
-        self, item, result_tree, modifier, mod_apply, data_model, context
+        self, item, result_tree, modifier, mod_apply, data_model, item_name, context
     ):
         result = item
 
@@ -429,6 +430,7 @@ class TreeConverter:
                             mod_list_item,
                             True,
                             data_model,
+                            item_name,
                             str(context) + ": " + mod_list_item,
                         )
             elif mod_apply is True:
@@ -438,13 +440,14 @@ class TreeConverter:
                     modifier,
                     mod_apply,
                     data_model,
+                    item_name,
                     str(context) + ": " + modifier,
                 )
 
         return result
 
     def apply_modifiers_to_item(
-        self, item, result_tree, modifiers, data_model, context
+        self, item, result_tree, modifiers, data_model, item_name, context
     ):
         result = item
 
@@ -457,13 +460,14 @@ class TreeConverter:
                         modifier,
                         mod_apply,
                         data_model,
+                        item_name,
                         str(context) + ": apply(modifier)",
                     )
 
         return result
 
     def apply_modifiers_to_result(
-        self, result, dispatch_modifiers, result_tree, dispatch_contained, context
+        self, result, dispatch_modifiers, result_tree, dispatch_contained, dispatch_value, context
     ):
         result_list = None
         base_result = result
@@ -479,6 +483,7 @@ class TreeConverter:
                             result_tree,
                             dispatch_modifiers,
                             dispatch_contained,
+                            dispatch_value,
                             str(context)
                             + " for item # "
                             + str(item_num)
@@ -497,6 +502,7 @@ class TreeConverter:
                             result_tree,
                             dispatch_modifiers,
                             dispatch_contained,
+                            dispatch_value,
                             str(context) + " for item in result apply modifiers",
                         )
 
@@ -572,6 +578,7 @@ class TreeConverter:
                 dispatch_modifiers,
                 result_tree,
                 dispatch_contained,
+                dispatch_value,
                 str(context) + " apply_modifiers",
             )
 
@@ -883,8 +890,8 @@ class HugoConverter:
 
         self.modifier_map = {
             "author": self.sub_author_display_name_for_login_name,
-            "content-replace": self.replace_in_content,
             "content-hrefs": self.make_href_relative_in_content,
+            "fields-value-replace": self.replace_value_in_fields,
             "from-wp-gmt-date": self.convert_from_wp_gmt_date,
             "image-urls-in-xml": self.handle_image_urls_in_html_content,
             "url": self.make_url_relative,
@@ -901,7 +908,7 @@ class HugoConverter:
             config.get_config_item("use_author_display_name_in_metadata") or False
         )
 
-        self.content_replace = config.get_config_item("content_replace") or {}
+        self.fields_value_replace = config.get_config_item("fields_value_replace") or {}
 
         # Removing fields, values
         self.field_filter = set(self.config.get_config_item("remove_fields") or [])
@@ -977,7 +984,7 @@ class HugoConverter:
         return self.page_map
 
     # For absolute urls on this site, make URLs relative to site_url (baseURL)
-    def make_url_relative(self, item_url, result_tree, item_map, context):
+    def make_url_relative(self, item_url, result_tree, item_map, item_name, context):
         if item_url is not None:
             item_parsed = urlparse(item_url)
             if self.site_url is not None:
@@ -990,19 +997,22 @@ class HugoConverter:
         else:
             return item_url
 
-    def replace_in_content(self, oldcontent, result_tree, item_map, context):
-        newcontent = str(oldcontent)
-        self.contents_checked = self.contents_checked + 1
-        for target, replacement in self.content_replace.items():
-            newcontent = re.sub(target, replacement, newcontent)
-            if oldcontent != newcontent:
-                self.replacements = self.replacements + 1
-                oldcontent = newcontent
+    def replace_value_in_fields(self, item, result_tree, item_map, item_name, context):
+        newcontent = str(item)
+        if (self.fields_value_replace is not None) and isinstance(self.fields_value_replace, collections.abc.Mapping) and (self.fields_value_replace.get(item_name) is not None) and isinstance(self.fields_value_replace[item_name], collections.abc.Mapping):
+            field_replace_items = self.fields_value_replace[item_name]
+            if item_name == "content":
+                self.contents_checked = self.contents_checked + 1
+            for target, replacement in field_replace_items.items():
+                newcontent = re.sub(target, replacement, newcontent)
+                if (item != newcontent) and (item_name == "content"):
+                    self.replacements = self.replacements + 1
+                item = newcontent
 
         return newcontent
 
     def handle_image_urls_in_html_content(
-        self, content, result_tree, item_map, context
+        self, content, result_tree, item_map, item_name, context
     ):
         newcontent = str(content)
         html5_content = html5lib_parse(
@@ -1043,7 +1053,7 @@ class HugoConverter:
         return newcontent
 
     # For absolute hrefs in content on this site, make URLs relative to site_url (baseURL)
-    def make_href_relative_in_content(self, content, result_tree, item_map, context):
+    def make_href_relative_in_content(self, content, result_tree, item_map, item_name, context):
         newcontent = str(content)
         html5_content = html5lib_parse(
             newcontent, container="div", namespaceHTMLElements=False
@@ -1071,7 +1081,7 @@ class HugoConverter:
 
     # Convert author to author_display_name, if requested
     def sub_author_display_name_for_login_name(
-        self, author, result_tree, item_map, context
+        self, author, result_tree, item_map, item_name, context
     ):
         if self.use_author_display_name_in_metadata:
             if (
@@ -1092,7 +1102,7 @@ class HugoConverter:
         return author
 
     # Convert WP GMT date to iso-8601 format
-    def convert_from_wp_gmt_date(self, date, result_tree, item_map, context):
+    def convert_from_wp_gmt_date(self, date, result_tree, item_map, item_name, context):
         outdate = date
         olddate = datetime.datetime.strptime(str(date) + "Z", "%Y-%m-%d %H:%M:%S%z")
         outdate = olddate.isoformat()

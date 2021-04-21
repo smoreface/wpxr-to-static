@@ -11,7 +11,7 @@ hugo_wp_items:
       modifier-list:
         - image-urls-in-xml
         - content-hrefs
-        - content-replace
+        - fields-value-replace
     - item: date
       from-wp-gmt-date: true
     - item: description
@@ -29,6 +29,7 @@ hugo_wp_items:
         - rename-keys
         - remove-self
     - item: type
+      fields-value-replace: true
     - item: weight
       remove-zero: true
     - item: wp_id
