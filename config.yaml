@@ -86,8 +86,11 @@
 # Replace certain patterns in a field's value
 # Currently has no default, the comment is an example
 # fields_value_replace:
-#   content:
-#     "<sub>(.*?)</sub>": '{{< sub >}}\1{{< /sub >}}'
+# content:
+#   "<sub>(.*?)</sub>": '{{< sub >}}\1{{< /sub >}}'
+#   "<pre.*?><code.*?>(.*?)</code></pre>": '{{< highlight Javascript >}}\1{{< /highlight >}}'
+# type:
+#  "post": "posts" # Required for hugo-geekdoc theme to treat blog pages as blog posts
 
 # Remove single values we don't want, for a given field  (list of maps)
 # remove_field_values:

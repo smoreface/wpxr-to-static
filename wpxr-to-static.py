@@ -1004,7 +1004,7 @@ class HugoConverter:
             if item_name == "content":
                 self.contents_checked = self.contents_checked + 1
             for target, replacement in field_replace_items.items():
-                newcontent = re.sub(target, replacement, newcontent)
+                newcontent = re.sub(target, replacement, newcontent, flags=re.MULTILINE|re.DOTALL)
                 if (item != newcontent) and (item_name == "content"):
                     self.replacements = self.replacements + 1
                 item = newcontent
