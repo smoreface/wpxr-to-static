@@ -71,8 +71,14 @@
 
 # Remove fields we don't want in final output, but do during processing
 # final_remove_fields:
+#   - _customize_changeset_uuid
 #   - parent
 #   - type
+
+# Remove fields we don't want in final output, using a regexp
+# Default is not not filter fields by regexp
+# regexp_remove_fields:
+#   - "_oembed_.*"
 
 # Don't emit wp_id in output files
 # no_output_wp_id: true

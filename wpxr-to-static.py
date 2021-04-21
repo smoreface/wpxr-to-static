@@ -104,6 +104,7 @@ item_type_filter:
 
 # Remove fields we don't want in final output, but do during processing
 final_remove_fields:
+  - _customize_changeset_uuid
   - parent
   - type
 
@@ -1357,6 +1358,11 @@ class HugoWriter:
             self.config.get_config_item("final_remove_fields") or []
         )
 
+        # Remove fields via regexp that are not wanted in output
+        self.regexp_remove_fields = (
+            self.config.get_config_item("regexp_remove_fields") or []
+        )
+
         # Don't output wp_id in metadata
         self.no_output_wp_id = self.config.get_config_item("no_output_wp_id") or False
 
@@ -1515,8 +1521,10 @@ class HugoWriter:
                             + str(self.target_extension)
                         )
 
-                logging.debug("      full_path: " + str(item_full_path))
-                item_file = codecs.open(item_full_path, "w", encoding="utf-8")
+                wp_id = item["wp_id"]
+                if self.no_output_wp_id is True:
+                    del item["wp_id"]
+
                 if (self.final_remove_fields is not None) and isinstance(
                     self.final_remove_fields, list
                 ):
@@ -1528,10 +1536,20 @@ class HugoWriter:
                     for remove_field in remove_field_keys:
                         del item[remove_field]
 
-                wp_id = item["wp_id"]
-                if self.no_output_wp_id is True:
-                    del item["wp_id"]
+                if (self.regexp_remove_fields is not None) and isinstance(
+                    self.regexp_remove_fields, list
+                ):
+                    remove_field_keys = []
+                    item_keys = item.keys()
+                    for field in self.regexp_remove_fields:
+                        for item_key in item_keys:
+                            if re.search(field, item_key) is not None:
+                                remove_field_keys.append(item_key)
+                    for remove_field in remove_field_keys:
+                        del item[remove_field]
 
+                logging.debug("      full_path: " + str(item_full_path))
+                item_file = codecs.open(item_full_path, "w", encoding="utf-8")
                 yaml.dump(data=item, stream=item_file, explicit_start=True)
 
                 if self.no_output_wp_id is True:
