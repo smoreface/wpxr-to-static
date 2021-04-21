@@ -882,6 +882,7 @@ class HugoConverter:
         self.modifier_map = {
             "author": self.sub_author_display_name_for_login_name,
             "content-replace": self.replace_in_content,
+            "content-hrefs": self.make_href_relative_in_content,
             "image-urls-in-xml": self.handle_image_urls_in_html_content,
             "url": self.make_url_relative,
         }
@@ -1036,6 +1037,33 @@ class HugoConverter:
                     element_src["element"].set("src", element_src["src"])
                 newcontent = html5lib_serialize(html5_content)
 
+        return newcontent
+
+    # For absolute hrefs in content on this site, make URLs relative to site_url (baseURL)
+    def make_href_relative_in_content(self, content, result_tree, item_map, context):
+        newcontent = str(content)
+        html5_content = html5lib_parse(
+            newcontent, container="div", namespaceHTMLElements=False
+        )
+        if html5_content is not None:
+            elements_href_update = []
+            gotFigure = False
+            for element in html5_content.iter():
+                if element.tag == "a":
+                    href = element.get("href")
+                    if href is not None:
+                        href_parsed = urlparse(href)
+                        if self.site_url is not None:
+                            site_parsed = urlparse(self.site_url)
+                            if href_parsed.netloc == site_parsed.netloc:
+                                href_parsed = href_parsed._replace(scheme="", netloc="")
+                                elements_href_update.append(
+                                    {"element": element, "href": href_parsed.geturl()}
+                                )
+            if len(elements_href_update) > 0:
+                for element_href in elements_href_update:
+                    element_href["element"].set("href", element_href["href"])
+                newcontent = html5lib_serialize(html5_content)
         return newcontent
 
     # Convert author to author_display_name, if requested

@@ -10,6 +10,7 @@ hugo_wp_items:
     - list: content
       modifier-list:
         - image-urls-in-xml
+        - content-hrefs
         - content-replace
     - item: date
     - item: description
