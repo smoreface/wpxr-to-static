@@ -13,11 +13,12 @@ hugo_wp_items:
         - content-hrefs
         - content-replace
     - item: date
+      from-wp-gmt-date: true
     - item: description
-    - item: lastmod
     - item: parent
       remove-zero: true
     - item: publishDate
+      from-wp-gmt-date: true
     - item: slug
     - item: summary
     - item: title
@@ -44,9 +45,8 @@ hugo_wp_items:
     attachment_url: "wp:attachment_url"
     author: "dc:creator"
     content: "content:encoded"
-    date: "wp:post_date_gmt"
+    date: "wp:post_modified_gmt"
     description: "description"
-    lastmod: "wp:post_modified_gmt"
     parent: "wp:post_parent"
     postmeta:
       contains:
@@ -73,7 +73,7 @@ hugo_wp_items:
         - old_slug
       tag: "wp:postmeta"
       value: meta_value
-    publishDate: "pubDate"
+    publishDate: "wp:post_date_gmt"
     slug: "wp:post_name"
     summary: "excerpt:encoded"
     taxonomy:

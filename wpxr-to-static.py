@@ -2,23 +2,24 @@
 
 # Standard libraries
 import codecs
-import os
-import io
-import re
-import sys
-from glob import glob
 import collections
+import datetime
+from glob import glob
+import io
 import logging
+import os
+import re
 from shutil import copyfile
+import sys
 
 # Parsing and serializing
-from xml.etree.ElementTree import ElementTree, TreeBuilder, XMLParser, ParseError
 from html5lib import parseFragment as html5lib_parse, serialize as html5lib_serialize
 from urllib.parse import urlparse, urljoin
-import yaml
-import toml
 from markdownify import markdownify
+import toml
 from urllib3 import PoolManager
+from xml.etree.ElementTree import ElementTree, TreeBuilder, XMLParser, ParseError
+import yaml
 
 """
 wpxr-to-static - Wordpress XML exports to static website generator files
@@ -883,6 +884,7 @@ class HugoConverter:
             "author": self.sub_author_display_name_for_login_name,
             "content-replace": self.replace_in_content,
             "content-hrefs": self.make_href_relative_in_content,
+            "from-wp-gmt-date": self.convert_from_wp_gmt_date,
             "image-urls-in-xml": self.handle_image_urls_in_html_content,
             "url": self.make_url_relative,
         }
@@ -1087,6 +1089,13 @@ class HugoConverter:
                         ):
                             author = p_author["name"]
         return author
+
+    # Convert WP GMT date to iso-8601 format
+    def convert_from_wp_gmt_date(self, date, result_tree, item_map, context):
+        outdate = date
+        olddate = datetime.datetime.strptime(str(date) + "Z", "%Y-%m-%d %H:%M:%S%z")
+        outdate = olddate.isoformat()
+        return outdate
 
     # Use the WP <-> config.toml data model to generate the
     # tree for a site's config.toml
