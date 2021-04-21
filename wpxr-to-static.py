@@ -51,7 +51,7 @@ class W2SConfig:
     BASE_CONFIG_YAML = """
 # Logging level (just stderr output at the moment)
 # Logs only this level of message and above through the log facility
-loglevel: CRITICAL
+loglevel: ERROR
 
 # The wordpress export xml (WPXR) filename.
 wpxr_file: wpxr/wpxr.xml
