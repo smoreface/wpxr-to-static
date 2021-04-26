@@ -9,9 +9,9 @@ hugo_wp_items:
       author: true
     - list: content
       modifier-list:
+        - fields-value-replace
         - image-urls-in-xml
         - content-hrefs
-        - fields-value-replace
     - item: date
       from-wp-gmt-date: true
     - item: description
@@ -26,8 +26,6 @@ hugo_wp_items:
       modifier-list:
         - key-value
         - list-up-map
-        - rename-keys
-        - remove-self
     - item: type
       fields-value-replace: true
     - item: weight
@@ -38,9 +36,6 @@ hugo_wp_items:
       modifier-list:
         - key-value
         - list-up-map
-        - rename-keys
-        - remove-list
-        - remove-self
   contained:
     aliases: "link"
     attachment_url: "wp:attachment_url"
@@ -57,21 +52,6 @@ hugo_wp_items:
         meta_key: "wp:meta_key"
         meta_value: "wp:meta_value"
       key: meta_key
-      rename_keys:
-        attached_file: _wp_attached_file
-        attachment_alt: _wp_attachment_image_alt
-        featured_image: _thumbnail_id
-        layout: _wp_page_template
-        number_edits: _edit_last
-        old_slug: _wp_old_slug
-      remove_list_keys:
-        - _wp_attachment_data
-        - attached_file
-        - attachment_alt
-        - featured_image
-        - layout
-        - number_edits
-        - old_slug
       tag: "wp:postmeta"
       value: meta_value
     publishDate: "wp:post_date_gmt"
@@ -85,9 +65,6 @@ hugo_wp_items:
         name: nicename
         term: domain
       key: term
-      rename_keys:
-        categories: category
-        tags: post_tag
       tag: category
       value: name
     title: "title"
@@ -105,6 +82,7 @@ hugo_project_config:
     - item: title
     - item: description
     - item: languageCode
+      to-lower: true
     - item: homepage
     - item: author
       pull-single: true

@@ -69,10 +69,31 @@
 #   categories:
 #     - uncategorized
 
+# Rename fields
+# rename_fields:
+#   attached_file: _wp_attached_file
+#   attachment_alt: _wp_attachment_image_alt
+#   categories: category
+#   featured_image: _thumbnail_id
+#   layout: _wp_page_template
+#   number_edits: _edit_last
+#   old_slug: _wp_old_slug
+#   tags: post_tag
+
 # Remove fields we don't want in final output, but do during processing
 # final_remove_fields:
 #   - _customize_changeset_uuid
+#   - _wp_attachment_data
+#   - attached_file
+#   - attachment_alt
+#   - featured_image
+#   - layout
+#   - number_edits
+#   - old_slug
 #   - parent
+#   - postmeta
+#   - slug
+#   - taxonomy
 #   - type
 
 # Remove fields we don't want in final output, using a regexp
@@ -86,15 +107,21 @@
 # Replace certain patterns in a field's value
 # Currently has no default, the comment is an example
 # fields_value_replace:
-# content:
-#   "<sub>(.*?)</sub>": '{{< sub >}}\1{{< /sub >}}'
-#   "<pre.*?><code.*?>(.*?)</code></pre>": '{{< highlight Javascript >}}\1{{< /highlight >}}'
+#   content:
+#     "<sub>(.*?)</sub>": '{{< sub >}}\1{{< /sub >}}'
+#     "<sup>(.*?)</sup>": '{{< sup >}}\1{{< /sup >}}'
+#     "<pre.*?><code.*?>(.*?)</code></pre>": '{{< highlight Javascript >}}\1{{< /highlight >}}'
+#     "<!-- /?wp:.*? -->": ""
 # type:
 #  "post": "posts" # Required for hugo-geekdoc theme to treat blog pages as blog posts
 
 # Remove single values we don't want, for a given field  (list of maps)
 # remove_field_values:
 #   - aliases: /
+#   - draft: false
+
+# Remove aliases that match permalink (i.e. duplicate path)
+# remove_permalink_alias: True
 
 # Options for converting HTML content to Markdown using markdownify
 # markdownify:

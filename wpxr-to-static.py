@@ -102,10 +102,31 @@ item_type_filter:
   - wp_block
   - wpcf7_contact_form
 
+# Rename fields
+rename_fields:
+  attached_file: _wp_attached_file
+  attachment_alt: _wp_attachment_image_alt
+  categories: category
+  featured_image: _thumbnail_id
+  layout: _wp_page_template
+  number_edits: _edit_last
+  old_slug: _wp_old_slug
+  tags: post_tag
+
 # Remove fields we don't want in final output, but do during processing
 final_remove_fields:
   - _customize_changeset_uuid
+  - _wp_attachment_data
+  - attached_file
+  - attachment_alt
+  - featured_image
+  - layout
+  - number_edits
+  - old_slug
   - parent
+  - postmeta
+  - slug
+  - taxonomy
   - type
 
 # Don't emit wp_id in output files
@@ -119,6 +140,10 @@ strip: ["script"]
 # Remove single values we don't want, for a given field (list_of_maps)
 remove_field_values:
   - aliases: /
+  - draft: false
+
+# Remove aliases that match permalink (i.e. duplicate path)
+remove_permalink_alias: True
 
 # Instead of login name use display name in Hugo author per-page metadata
 use_author_display_name_in_metadata: True
@@ -260,9 +285,8 @@ class TreeConverter:
             "list-up-map": self.list_up_map,
             "pull-single": self.pull_single_from_list,
             "remove-list": self.remove_list,
-            "remove-self": self.remove_self_key,
-            "rename-keys": self.rename_keys,
             "remove-zero": self.remove_zero,
+            "to-lower": self.to_lower,
         }
 
         # Merge modifier maps from instantation
@@ -358,39 +382,17 @@ class TreeConverter:
                     out_map[delist_key] = out_map[delist_key][0]
         return cur_map
 
-    def remove_self_key(self, cur_map, result_tree, data_model, item_name, context):
-        return None
-
-    def rename_keys(self, cur_map, result_tree, data_model, item_name, context):
-        out_map = result_tree
-        keys_to_rename = data_model.get("rename_keys")
-        if (keys_to_rename is not None) and isinstance(
-            keys_to_rename, collections.abc.Mapping
-        ):
-
-            if (out_map is None) or (not isinstance(out_map, collections.abc.Mapping)):
-                logging.error(
-                    "result_tree is not a map for rename_keys at " + str(context)
-                )
-                return cur_map
-
-            renamed_keys = []
-
-            for rename_key, rename_value in keys_to_rename.items():
-                if out_map.get(rename_value) is not None:
-                    renamed_keys.append(rename_value)
-                    out_map[rename_key] = out_map.get(rename_value)
-
-            for rename_key in renamed_keys:
-                del out_map[rename_key]
-
-        return cur_map
-
     def remove_zero(self, cur_item, result_tree, data_model, item_name, context):
         if (cur_item is None) or cur_item == 0:
             return None
         else:
             return cur_item
+
+    def to_lower(self, item, result_tree, data_model, item_name, context):
+        new_item = item
+        if isinstance(item, str):
+            new_item = item.lower()
+        return new_item
 
     def apply_one_modifier_to_item(
         self, item, result_tree, modifier, mod_apply, data_model, item_name, context
@@ -913,10 +915,15 @@ class HugoConverter:
 
         # Mangling
         self.use_author_display_name_in_metadata = (
-            config.get_config_item("use_author_display_name_in_metadata") or False
+            self.config.get_config_item("use_author_display_name_in_metadata") or False
         )
 
-        self.fields_value_replace = config.get_config_item("fields_value_replace") or {}
+        self.fields_value_replace = (
+            self.config.get_config_item("fields_value_replace") or {}
+        )
+
+        # Renaming fields
+        self.rename_fields = self.config.get_config_item("rename_fields") or []
 
         # Removing fields, values
         self.field_filter = set(self.config.get_config_item("remove_fields") or [])
@@ -1069,7 +1076,12 @@ class HugoConverter:
             if len(elements_src_update) > 0:
                 for element_src in elements_src_update:
                     element_src["element"].set("src", element_src["src"])
-                newcontent = html5lib_serialize(html5_content)
+                newcontent = html5lib_serialize(
+                    html5_content,
+                    omit_optional_tags=False,
+                    minimize_boolean_attributes=False,
+                    use_trailing_solidus=True,
+                )
 
         return newcontent
 
@@ -1099,7 +1111,12 @@ class HugoConverter:
             if len(elements_href_update) > 0:
                 for element_href in elements_href_update:
                     element_href["element"].set("href", element_href["href"])
-                newcontent = html5lib_serialize(html5_content)
+                newcontent = html5lib_serialize(
+                    html5_content,
+                    omit_optional_tags=False,
+                    minimize_boolean_attributes=False,
+                    use_trailing_solidus=True,
+                )
         return newcontent
 
     # Convert author to author_display_name, if requested
@@ -1256,7 +1273,11 @@ class HugoConverter:
 
         # For items of type 'page' determine the parents and path
         for item in self.hugo_items:
-            if (item.get("type") is not None) and item["type"] in ["page", "post"]:
+            if (item.get("type") is not None) and item["type"] in [
+                "page",
+                "post",
+                "posts",
+            ]:
                 page_id = item["wp_id"]
                 page_index = self.hugo_items.index(item)
                 wp_status = item.get("wp_status")
@@ -1312,6 +1333,29 @@ class HugoConverter:
 
         if self.page_map is None:
             self.page_map = self.get_page_map()
+
+        # Rename fields
+        keys_to_rename = self.rename_fields
+        if (keys_to_rename is not None) and isinstance(
+            keys_to_rename, collections.abc.Mapping
+        ):
+
+            for item in self.hugo_items:
+                if (item is None) or (not isinstance(item, collections.abc.Mapping)):
+                    logging.error(
+                        "item is not a map for rename_keys at " + item["wp_id"]
+                    )
+                    continue
+
+                renamed_keys = []
+
+                for rename_key, rename_value in keys_to_rename.items():
+                    if item.get(rename_value) is not None:
+                        renamed_keys.append(rename_value)
+                        item[rename_key] = item.get(rename_value)
+
+                for rename_key in renamed_keys:
+                    del item[rename_key]
 
         # Replace wp_status with draft: true or draft: false
         for page_id in self.page_map.keys():
@@ -1415,6 +1459,11 @@ class HugoWriter:
 
         self.image_destination_path = (
             self.config.get_config_item("image_destination_path") or "static/images"
+        )
+
+        # Handle aliases that match permalink (remove them)
+        self.remove_permalink_alias = (
+            self.config.get_config_item("remove_permalink_alias") or False
         )
 
         # Page Map
@@ -1553,6 +1602,35 @@ class HugoWriter:
                             + "."
                             + str(self.target_extension)
                         )
+
+                # Remove aliases which match the permalink
+                if self.remove_permalink_alias is True:
+                    permaslug = None
+                    if item.get("type") == "page":
+                        if self.page_map.get(item["wp_id"]):
+                            permaslug = self.page_map[item["wp_id"]].get("parent-path")
+                            if (permaslug is not None) and item.get("slug") is not None:
+                                permaslug = permaslug + "/" + item["slug"]
+                            else:
+                                permaslug = item.get("slug")
+                    else:
+                        permaslug = item.get("slug")
+                    aliases_remove = False
+                    if (
+                        (permaslug is not None)
+                        and (item.get("aliases") is not None)
+                        and isinstance(item["aliases"], list)
+                    ):
+                        alias_to_remove = []
+                        for alias in item["aliases"]:
+                            if alias.strip("/") == permaslug.strip("/"):
+                                alias_to_remove.append(alias)
+                        for alias in alias_to_remove:
+                            item["aliases"].remove(alias)
+                        if len(item["aliases"]) < 1:
+                            aliases_remove = True
+                    if aliases_remove == True:
+                        del item["aliases"]
 
                 wp_id = item["wp_id"]
                 if self.no_output_wp_id is True:
