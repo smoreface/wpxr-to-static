@@ -20,7 +20,7 @@
 
 # Relative path to your WordPress images
 # e.g. /wp-content/uploads would create a match for
-# an image in you WPXR with a URL such as
+# an image in your WPXR with a URL such as
 # https://www.example.com/wp-content/uploads/2021/01/an-image-file.png
 # If www.example.com were the site's base URL.
 # image_origin_rel_url: /wp-content/uploads
