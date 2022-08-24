@@ -46,13 +46,18 @@ pip install --user -r requirements.txt
 
 ### Configure
 
-Copy ``config.yaml`` from the extracted .zip or .tar.gz, or cloned directory, to a convenient location.
+Before you run the migration script, update the ``config.yaml`` file to specify how and what to migrate from your Wordpress export. 
 
-If you need to change the 'data model' you can also copy ``hugo_data_model.yaml`` to a location of your choice (not necessarily the same as ``config.yaml``)
+First, make the files easy to find: 
+1. Copy the ``config.yaml`` file included in wpxr-to-static from the extracted .zip or .tar.gz, or cloned directory to a convenient location.
+2. If you want to change the 'data model' you can also copy ``hugo_data_model.yaml`` to a location of your choice (not necessarily the same as ``config.yaml``)
 
-As the comments in ``config.yaml`` indicate, the defaults are present in the ``config.yaml`` as commented out entries.  One only needs to uncomment lines if one needs to change from the default.
+Next, update the ``config.yaml`` file. 
+
+As the comments in ``config.yaml`` indicate, the defaults are present in the ``config.yaml`` as commented out entries. Uncomment lines to make the script work, and optionally change some of the configuration settings of interest (see next section). 
 
 #### Some Configuration Settings of Particular Interest
+These are configuration settings that you likely want to update in ``config.yaml``.
 
 ``data_models``: A configuration file defining the mapping of the WPXR XML tags and contents to an intermediate form used to create a combination of YAML frontmatter and Markdown files for each post or page, and a config.toml for the site.
 
@@ -62,9 +67,9 @@ As the comments in ``config.yaml`` indicate, the defaults are present in the ``c
 
 ``download_content_images``: Whether to downloads images from the WordPress site into the target directory.
 
-``image_origin_local_path``: If set, ``wpxr-to-static`` will first look here for an image file and only download the image if is not already present. Downloads are placed in this path.
+``image_origin_local_path``: If set, ``wpxr-to-static`` will look here first for an image file and only download the image if is not already present. Downloads are placed in this path.
 
-``item_type_filter``: A YAML _list_ of item types (as defined later) to exclude from output.
+``item_type_filter``: A YAML _list_ of item types (as defined later) to exclude from the output.
 
 ``rename_files``: A YAML _map_ of ``target-field-name: original-field-name`` pairs
 
@@ -76,7 +81,10 @@ TBD
 
 ### Execute
 
-**NB**: A configuration file and data model in the location specified in the config file are required.
+Run the script to convert your Wordpress XML file(s). 
+
+**Note**: A configuration file and data model in the location specified in the config file are required to run the script.
+
 #### Option 1: config.yaml in Current Directory
 
 Linux:
@@ -89,7 +97,7 @@ Windows:
 C:\path\to\wpxr-to-static.py
 ```
 
-**NB** Instead of config.yaml one can also use config.toml.
+**Note** Instead of config.yaml, you can also use config.toml.
 #### Option 2: config.yaml in another location
 
 Linux:
@@ -102,7 +110,7 @@ Windows:
 C:\path\to\wxpr-to-static.py C:\another\path\to\config.yaml
 ```
 
-**NB**: You can substitute any ``name.yaml`` or ``name.toml`` for ``config.yaml``.
+**Note**: You can substitute any ``name.yaml`` or ``name.toml`` for ``config.yaml``.
 
 ## Extras
 
